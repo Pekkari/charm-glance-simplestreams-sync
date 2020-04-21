@@ -31,7 +31,7 @@ from ops.model import (  # noqa:E402
 
 from ubuntu.apt import add_source, apt_install, apt_update
 from openstack.utils import get_os_codename_package
-from nagios.nrpe import NRPE
+from nagios.nrpe import NRPE, get_nagios_hostname
 
 from interfaces import (
     IdentityServiceInterfaceRequires
@@ -90,9 +90,9 @@ class GlanceSimplestreamsSyncCharm(CharmBase):
         # -- example action observation
         # self.framework.observe(self.on.example_action, self)
         # -- example relation / interface observation, disabled by default
-        #self.framework.observe(self.on.identity_service_relation_joined, self)
-        #self.framework.observe(self.on.identity_service_relation_changed, self)
-        #self.keystone = IdentityServiceInterfaceRequires(self, 'identity-service')
+        self.framework.observe(self.on.identity_service_relation_joined, self)
+        self.framework.observe(self.on.identity_service_relation_changed, self)
+        self.keystone = IdentityServiceInterfaceRequires(self, 'identity-service')
 
     def on_start(self, event):
         """Handle start state."""
@@ -115,7 +115,7 @@ class GlanceSimplestreamsSyncCharm(CharmBase):
                 configs.write(MIRRORS_CONF_FILE_NAME)
                 self._ensure_perms()
 
-                update_nrpe_config()
+                self.update_nrpe_config(event.relation)
 
                 config = self.model.config()
 
@@ -141,17 +141,15 @@ class GlanceSimplestreamsSyncCharm(CharmBase):
             logging.info("Waiting on configuration to run, and keystone to be related.")
             self.unit.status = BlockedStatus("Waiting for keystone to be related")
 
-    def update_nrpe_config():
-        hostname = nrpe.get_nagios_hostname()
-        nrpe_setup = nrpe.NRPE(hostname=hostname)
-        nrpe_setup.write()
+    def update_nrpe_config(self, relation=None):
+        hostname = get_nagios_hostname(relation)
+        if relation:
+            nrpe_setup = NRPE(relation, self.model.config, hostname=hostname)
+            nrpe_setup.write()
 
     def on_upgrade_charm(self, event):
-        install()
-        update_nrpe_config()
-        configs = self._get_configs(event)
-        configs.write_all()
-        ensure_perms()
+        self.on_install(event)
+        self._ensure_perms()
 
     def on_identity_service_relation_joined(self, event):
         config = self.model.config
@@ -213,7 +211,7 @@ class GlanceSimplestreamsSyncCharm(CharmBase):
                     event.relation,
                     self.model.config,
                     self.model.get_binding('public').network.bind_address
-                )
+                ),
                 self.model.unit
             ]
         )

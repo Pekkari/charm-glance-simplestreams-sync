@@ -147,7 +147,7 @@ class AMQPContext(OSContextGenerator):
         self.ssl_dir = ssl_dir
         self.relation = relation
         self.relation_prefix = relation_prefix
-        self.interfaces = [relation.name]
+        self.interfaces = [relation.name] if relation else rel_name
 
     def __call__(self, relation, config, bind_address):
         logging.debug('Generating template context for amqp')

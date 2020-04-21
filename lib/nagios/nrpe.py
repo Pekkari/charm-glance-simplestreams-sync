@@ -114,14 +114,14 @@ class NRPE(object):
 
         self.remove_check_queue.clear()
 
-def get_nagios_hostname(relation_name='nrpe-external-master'):
+def get_nagios_hostname(relation=None , relation_name='nrpe-external-master'):
     """
     Query relation with nrpe subordinate, return the nagios_hostname
 
     :param str relation_name: Name of relation nrpe sub joined to
     """
-    for rel in relations_of_type(relation_name):
-        if 'nagios_hostname' in rel:
-            return rel['nagios_hostname']
+    if relation and relation.name == relation_name:
+        if 'nagios_hostname' in relation.data:
+            return relation['nagios_hostname']
 
 
